@@ -10,6 +10,7 @@ import org.webrtc.CapturerObserver;
 import org.webrtc.SurfaceTextureHelper;
 import org.webrtc.VideoCapturer;
 import org.webrtc.VideoSource;
+import org.webrtc.VideoCapturer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +53,7 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
     public CameraCaptureController(CameraEnumerator cameraEnumerator, ReadableMap constraints) {
         super(
              constraints.getInt("width"),
-             constraints.getInt("height"), 
+             constraints.getInt("height"),
              constraints.getInt("frameRate"));
 
         this.cameraEnumerator = cameraEnumerator;

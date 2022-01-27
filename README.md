@@ -7,7 +7,7 @@ A WebRTC module for React Native.
 - Support iOS / macOS / Android.
 - Support Video / Audio / Data Channels.
 
-**NOTE** for Expo users: this plugin doesn't work unless you eject.
+> 🚨 Expo: This package is not available in the [Expo Go](https://expo.dev/client) app. Learn how you can use this package in [Custom Dev Clients](https://docs.expo.dev/development/getting-started/) via the out-of-tree [Expo Config Plugin](https://github.com/expo/config-plugins/tree/master/packages/react-native-webrtc).
 
 ## Community
 
@@ -15,7 +15,7 @@ Everyone is welcome to our [Discourse community](https://react-native-webrtc.dis
 
 ## WebRTC Revision
 
-* Currently used revision: [M87](https://github.com/jitsi/webrtc/commit/9a88667ef7b46c175851506453c6cc6b642292cc)
+* Currently used revision: [M94](https://github.com/jitsi/webrtc/releases/tag/v94.0.0)
 * Supported architectures
   * Android: armeabi-v7a, arm64-v8a, x86, x86_64
   * iOS: arm64, x86_64 (for bitcode support, run [this script](https://github.com/react-native-webrtc/react-native-webrtc/blob/master/tools/downloadBitcode.sh))
@@ -64,7 +64,7 @@ mediaDevices.enumerateDevices().then(sourceInfos => {
     video: {
       width: 640,
       height: 480,
-      frameRate: 30
+      frameRate: 30,
       facingMode: (isFront ? "user" : "environment"),
       deviceId: videoSourceId
     }
@@ -116,6 +116,7 @@ Rendering RTCView.
 By calling this method the JavaScript global namespace gets "polluted" with the following additions:
 
 * `navigator.mediaDevices.getUserMedia()`
+* `navigator.mediaDevices.getDisplayMedia()`
 * `navigator.mediaDevices.enumerateDevices()`
 * `window.RTCPeerConnection`
 * `window.RTCIceCandidate`
@@ -140,6 +141,8 @@ it back to `true` will re-enable the camera.
 ## Related projects
 
 The [react-native-webrtc](https://github.com/react-native-webrtc) organization provides a number of packages which are useful when developing Real Time Communications applications.
+
+The [react-native-webrtc-web-shim](https://github.com/react-native-webrtc/react-native-webrtc-web-shim) project provides a shim for react-native-web support, allowing you to use [(almost)](https://github.com/react-native-webrtc/react-native-webrtc-web-shim/tree/main#setup) the same code in react-native-web as in react-native.
 
 ## Acknowledgements
 

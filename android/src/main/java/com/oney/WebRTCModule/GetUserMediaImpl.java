@@ -100,13 +100,37 @@ class GetUserMediaImpl {
 
         String id = UUID.randomUUID().toString();
         PeerConnectionFactory pcFactory = webRTCModule.mFactory;
-        AudioSource audioSource = pcFactory.createAudioSource(webRTCModule.constraintsForOptions(audioConstraintsMap));
+        MediaConstraints peerConstraints = webRTCModule.constraintsForOptions(audioConstraintsMap);
+
+        //PeerConnectionFactory.createAudioSource will throw an error when mandatory constraints contain nulls.
+        //so, let's check for nulls
+        checkMandatoryConstraints(peerConstraints);
+
+        AudioSource audioSource = pcFactory.createAudioSource(peerConstraints);
         AudioTrack track = pcFactory.createAudioTrack(id, audioSource);
+
+        // surfaceTextureHelper is initialized for videoTrack only, so its null here.
         tracks.put(
             id,
-            new TrackPrivate(track, audioSource, /* videoCapturer */ null));
+            new TrackPrivate(track, audioSource, /* videoCapturer */ null, /* surfaceTextureHelper */ null));
 
         return track;
+    }
+
+    private void checkMandatoryConstraints(MediaConstraints peerConstraints) {
+        ArrayList<MediaConstraints.KeyValuePair> valid = new ArrayList<>(peerConstraints.mandatory.size());
+
+        for (MediaConstraints.KeyValuePair constraint : peerConstraints.mandatory) {
+            if (constraint.getValue() != null) {
+                valid.add(constraint);
+            } else {
+                Log.d(TAG, String.format("constraint %s is null, ignoring it",
+                        constraint.getKey()));
+            }
+        }
+
+        peerConstraints.mandatory.clear();
+        peerConstraints.mandatory.addAll(valid);
     }
 
     ReadableArray enumerateDevices() {
@@ -159,11 +183,6 @@ class GetUserMediaImpl {
         final ReadableMap constraints,
         final Callback successCallback,
         final Callback errorCallback) {
-        // TODO: change getUserMedia constraints format to support new syntax
-        //   constraint format seems changed, and there is no mandatory any more.
-        //   and has a new syntax/attrs to specify resolution
-        //   should change `parseConstraints()` according
-        //   see: https://www.w3.org/TR/mediacapture-streams/#idl-def-MediaTrackConstraints
 
         AudioTrack audioTrack = null;
         VideoTrack videoTrack = null;
@@ -311,6 +330,17 @@ class GetUserMediaImpl {
             trackInfo.putString("label", trackId);
             trackInfo.putString("readyState", track.state().toString());
             trackInfo.putBoolean("remote", false);
+
+            if (track instanceof VideoTrack) {
+                TrackPrivate tp = this.tracks.get(trackId);
+                AbstractVideoCaptureController vcc = tp.videoCaptureController;
+                WritableMap settings = Arguments.createMap();
+                settings.putInt("height", vcc.getHeight());
+                settings.putInt("width", vcc.getWidth());
+                settings.putInt("frameRate", vcc.getFrameRate());
+                trackInfo.putMap("settings", settings);
+            }
+
             tracksInfo.add(trackInfo);
         }
 
@@ -321,11 +351,11 @@ class GetUserMediaImpl {
     }
 
     private VideoTrack createScreenTrack() {
-        DisplayMetrics displayMetrics = getDisplayMetrics();
+        DisplayMetrics displayMetrics = DisplayUtils.getDisplayMetrics(reactContext.getCurrentActivity());
         int width = displayMetrics.widthPixels;
         int height = displayMetrics.heightPixels;
-        int fps = 30;
-        ScreenCaptureController screenCaptureController = new ScreenCaptureController(width, height, fps, mediaProjectionPermissionResultData);
+        ScreenCaptureController screenCaptureController
+            = new ScreenCaptureController(reactContext.getCurrentActivity(), width, height, mediaProjectionPermissionResultData);
         return createVideoTrack(screenCaptureController);
     }
 
@@ -348,26 +378,17 @@ class GetUserMediaImpl {
         }
 
         VideoSource videoSource = pcFactory.createVideoSource(videoCapturer.isScreencast());
-        videoCapturer.initialize(surfaceTextureHelper, reactContext, CameraCaptureController.getCapturerObserverFactory().createCapturerObserver(surfaceTextureHelper, videoSource));
+        videoCapturer.initialize(surfaceTextureHelper, reactContext, videoSource.getCapturerObserver());
 
         String id = UUID.randomUUID().toString();
         VideoTrack track = pcFactory.createVideoTrack(id, videoSource);
 
         track.setEnabled(true);
-        tracks.put(id, new TrackPrivate(track, videoSource, videoCaptureController));
+        tracks.put(id, new TrackPrivate(track, videoSource, videoCaptureController, surfaceTextureHelper));
 
         videoCaptureController.startCapture();
 
         return track;
-    }
-
-    private DisplayMetrics getDisplayMetrics() {
-        Activity currentActivity = this.reactContext.getCurrentActivity();
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        WindowManager windowManager =
-            (WindowManager) currentActivity.getApplication().getSystemService(Context.WINDOW_SERVICE);
-        windowManager.getDefaultDisplay().getRealMetrics(displayMetrics);
-        return displayMetrics;
     }
 
     /**
@@ -388,6 +409,8 @@ class GetUserMediaImpl {
          */
         public final AbstractVideoCaptureController videoCaptureController;
 
+        private final SurfaceTextureHelper surfaceTextureHelper;
+
         /**
          * Whether this object has been disposed or not.
          */
@@ -406,10 +429,12 @@ class GetUserMediaImpl {
         public TrackPrivate(
             MediaStreamTrack track,
             MediaSource mediaSource,
-            AbstractVideoCaptureController videoCaptureController) {
+            AbstractVideoCaptureController videoCaptureController,
+            SurfaceTextureHelper surfaceTextureHelper) {
             this.track = track;
             this.mediaSource = mediaSource;
             this.videoCaptureController = videoCaptureController;
+            this.surfaceTextureHelper = surfaceTextureHelper;
             this.disposed = false;
         }
 
@@ -420,6 +445,18 @@ class GetUserMediaImpl {
                         videoCaptureController.dispose();
                     }
                 }
+
+                /*
+                 * As per webrtc library documentation - The caller still has ownership of {@code
+                 * surfaceTextureHelper} and is responsible for making sure surfaceTextureHelper.dispose() is
+                 * called. This also means that the caller can reuse the SurfaceTextureHelper to initialize a new
+                 * VideoCapturer once the previous VideoCapturer has been disposed. */
+
+                if(surfaceTextureHelper != null) {
+                    surfaceTextureHelper.stopListening();
+                    surfaceTextureHelper.dispose();
+                }
+
                 mediaSource.dispose();
                 track.dispose();
                 disposed = true;
