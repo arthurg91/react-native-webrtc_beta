@@ -3,6 +3,8 @@ package com.oney.WebRTCModule;
 import com.facebook.react.uimanager.annotations.ReactProp;
 import com.facebook.react.uimanager.SimpleViewManager;
 import com.facebook.react.uimanager.ThemedReactContext;
+import androidx.annotation.Nullable;
+import com.facebook.react.bridge.ReadableMap;
 
 
 public class RTCVideoViewManager extends SimpleViewManager<WebRTCView> {
@@ -70,5 +72,10 @@ public class RTCVideoViewManager extends SimpleViewManager<WebRTCView> {
   @ReactProp(name = "zOrder")
   public void setZOrder(WebRTCView view, int zOrder) {
     view.setZOrder(zOrder);
+  }
+
+  @ReactProp(name = "snapshotOption")
+  public void handleTakeSnapshot(WebRTCView view, @Nullable ReadableMap snapshotOption) {
+    view.handleTakeSnapshot(snapshotOption);
   }
 }

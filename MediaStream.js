@@ -125,6 +125,14 @@ export default class MediaStream extends EventTarget(MEDIA_STREAM_EVENTS) {
     return this._tracks.filter(track => track.kind === 'video');
   }
 
+  setVolume(volume: number) {
+    try {
+      this.getAudioTracks().forEach(track => track.setVolume(volume, this._reactTag));
+    } catch (error) {
+      console.log('PATCH-MediaStream.js')
+    }
+  }
+
   clone() {
     throw new Error('Not implemented.');
   }
