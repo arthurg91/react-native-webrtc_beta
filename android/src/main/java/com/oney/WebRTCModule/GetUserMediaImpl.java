@@ -378,7 +378,7 @@ class GetUserMediaImpl {
         }
 
         VideoSource videoSource = pcFactory.createVideoSource(videoCapturer.isScreencast());
-        videoCapturer.initialize(surfaceTextureHelper, reactContext, videoSource.getCapturerObserver());
+        videoCapturer.initialize(surfaceTextureHelper, reactContext, CameraCaptureController.getCapturerObserverFactory().createCapturerObserver(surfaceTextureHelper, videoSource));
 
         String id = UUID.randomUUID().toString();
         VideoTrack track = pcFactory.createVideoTrack(id, videoSource);
